@@ -86,7 +86,7 @@ public class PeroperoCommandModule : InteractionModuleBase<SocketInteractionCont
 **責務**
 - スラッシュコマンド `/peropero` とそのサブコマンド定義
 - コマンド実行者のロール権限チェック（`Discord:AllowedRoleIds` と照合）
-- 実行者のVCへの接続確認
+- コマンドを実行したチャンネルがVCに帰属しているかの確認（移動元VCの確定）
 - 移動元VCをコマンド実行時点で確定・記録
 
 **コマンドメソッド**
@@ -107,9 +107,10 @@ public class PeroperoCommandModule : InteractionModuleBase<SocketInteractionCont
 
 | 条件 | レスポンス |
 |------|-----------|
-| 実行者がVCに未接続 | エラーメッセージをテキストチャンネルに返す |
+| コマンド実行チャンネルがVCに帰属していない | エラーメッセージをテキストチャンネルに返す |
+| 移動元VCにメンバーが誰もいない（即時実行・予約コマンド実行時） | エラーメッセージをテキストチャンネルに返す |
 | `at` が過去日時 | エラーメッセージを返す |
-| `at` のフォーマット不正 | エラーメッセージを返す（期待フォーマット: `yyyy-MM-dd HH:mm`） |
+| `at` のフォーマット不正 | エラーメッセージを返す（期待フォーマット: `yyyy-MM-dd HH:mm` または `HH:mm`） |
 
 ---
 
@@ -144,9 +145,10 @@ public record MoveResult(
 
 **動作**
 1. `fromVc.GetUsersAsync()` で接続中の全メンバーを取得
-2. 各メンバーに対して `user.ModifyAsync(x => x.Channel = toVc)` を呼び出す
-3. 全員移動後に `MoveResult` を返す
-4. 例外発生時は `IsSuccess = false` で `ErrorMessage` にメッセージをセットして返す
+2. メンバーが0人の場合は `IsSuccess = false`、`MovedCount = 0`、`ErrorMessage` に該当メッセージをセットして返す
+3. 各メンバーに対して `user.ModifyAsync(x => x.Channel = toVc)` を呼び出す
+4. 全員移動後に `MoveResult` を返す
+5. 例外発生時は `IsSuccess = false` で `ErrorMessage` にメッセージをセットして返す
 
 ---
 
@@ -159,6 +161,7 @@ public class SchedulerService : IHostedService
 **責務**
 - `ScheduledJob` のCRUD管理
 - 各ジョブを指定日時に `MoveService.ExecuteAsync` で実行
+- 実行成功時に `ToVc` のテキストチャンネルへ成功メッセージを投稿
 - 実行失敗時に `NotifyChannelId` のチャンネルへエラーを投稿
 - 実行済みジョブのリストからの削除
 
@@ -188,8 +191,9 @@ private readonly SemaphoreSlim _lock = new(1, 1); // スレッドセーフなCRU
    b. Task.Delay(差分, job.Cts.Token) で待機
    c. キャンセルされた場合 → OperationCanceledException をキャッチして終了
    d. 時刻到達 → MoveService.ExecuteAsync を呼び出す
-   e. 失敗時 → NotifyChannelId のチャンネルにエラーメッセージを投稿
-   f. 完了後 → リストからジョブを削除
+   e. 成功時 → job.ToVc のテキストチャンネルに成功メッセージを投稿
+   f. 失敗時（メンバー0人・権限エラー等） → job.NotifyChannelId のチャンネルにエラーメッセージを投稿
+   g. 完了後 → リストからジョブを削除
 ```
 
 ---
@@ -213,7 +217,7 @@ public class ScheduledJob
 | `ToVc` | `IVoiceChannel` | 移動先VC |
 | `ExecuteAt` | `DateTimeOffset` | 実行日時（JST、UTC+9で保持） |
 | `RequestedBy` | `ulong` | 予約したユーザーのID |
-| `NotifyChannelId` | `ulong` | エラー通知先テキストチャンネルのID |
+| `NotifyChannelId` | `ulong` | エラー通知先テキストチャンネルのID（コマンドを実行したテキストチャンネル） |
 | `Cts` | `CancellationTokenSource` | キャンセル制御用（`new()` で初期化） |
 
 ---
@@ -226,12 +230,17 @@ public class ScheduledJob
 User → Discord: /peropero move to:#vc-b
 Discord → CommandModule: InteractionCreated
 CommandModule → CommandModule: 権限チェック
-CommandModule → CommandModule: 実行者のVC接続確認
+CommandModule → CommandModule: コマンド実行チャンネルのVC確認（fromVc 確定）
 CommandModule → MoveService: ExecuteAsync(fromVc, toVc)
 MoveService → Discord API: GetUsersAsync()
+MoveService → MoveService: メンバー数確認（0人ならエラーを返す）
 MoveService → Discord API: ModifyAsync(channel=toVc) × メンバー数
 MoveService → CommandModule: MoveResult
-CommandModule → User: "〇人を #vc-b に移動しました"
+alt 成功時
+  CommandModule → Discord API: toVc のテキストチャンネルに "〇人を #vc-b に移動したよ！"
+else 失敗時
+  CommandModule → User: エラーメッセージ
+end
 ```
 
 ### 3.2 `/peropero move <to> at:<datetime>` — 予約実行
@@ -240,9 +249,9 @@ CommandModule → User: "〇人を #vc-b に移動しました"
 User → Discord: /peropero move to:#vc-b at:2024-01-15 20:00
 Discord → CommandModule: InteractionCreated
 CommandModule → CommandModule: 権限チェック
-CommandModule → CommandModule: 実行者のVC接続確認
+CommandModule → CommandModule: コマンド実行チャンネルのVC確認（fromVc 確定）
 CommandModule → CommandModule: at パース・過去日時チェック
-CommandModule → CommandModule: fromVc を現時点で確定
+CommandModule → CommandModule: 移動元VCのメンバー数確認（0人ならエラー）
 CommandModule → SchedulerService: AddJobAsync(job)
 SchedulerService → SchedulerService: Task.Delay(ExecuteAt - Now)
 CommandModule → User: "2024-01-15 20:00 JST に予約しました（ID: xxxxxxxx）"
@@ -250,9 +259,13 @@ CommandModule → User: "2024-01-15 20:00 JST に予約しました（ID: xxxxxx
 --- 指定時刻到達 ---
 
 SchedulerService → MoveService: ExecuteAsync(fromVc, toVc)
-MoveService → Discord API: GetUsersAsync() / ModifyAsync()
+MoveService → Discord API: GetUsersAsync()
+MoveService → MoveService: メンバー数確認（0人ならエラーを返す）
+MoveService → Discord API: ModifyAsync(channel=toVc) × メンバー数
 MoveService → SchedulerService: MoveResult
-alt 失敗時
+alt 成功時
+  SchedulerService → Discord API: toVc のテキストチャンネルに成功メッセージを投稿
+else 失敗時
   SchedulerService → Discord API: チャンネル(NotifyChannelId)にエラー投稿
 end
 SchedulerService → SchedulerService: リストからジョブ削除
@@ -321,11 +334,13 @@ services:
 | 発生箇所 | 条件 | 対処 |
 |----------|------|------|
 | CommandModule | 権限なし | Ephemeral でエラーメッセージを返す |
-| CommandModule | 実行者がVCに未接続 | テキストチャンネルにエラーメッセージを返す |
+| CommandModule | コマンド実行チャンネルがVCに帰属していない | テキストチャンネルにエラーメッセージを返す |
+| CommandModule | 移動元VCにメンバーが誰もいない（即時・予約コマンド実行時） | テキストチャンネルにエラーメッセージを返す |
 | CommandModule | `at` フォーマット不正 | Ephemeral でエラーメッセージを返す |
 | CommandModule | `at` が過去日時 | Ephemeral でエラーメッセージを返す |
+| MoveService | 移動元VCにメンバーが誰もいない | `MoveResult.IsSuccess = false` で返す |
 | MoveService | 移動失敗（権限不足など） | `MoveResult.IsSuccess = false` で返す |
-| SchedulerService | 実行時エラー | `NotifyChannelId` のチャンネルにエラーを投稿 |
+| SchedulerService | 実行時エラー（メンバー0人・権限不足等） | `NotifyChannelId` のチャンネルにエラーを投稿 |
 | SchedulerService | BOT再起動 | スケジュールは揮発。再予約はユーザー責任 |
 
 ---
