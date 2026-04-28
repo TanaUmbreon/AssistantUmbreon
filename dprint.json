@@ -1,0 +1,20 @@
+{
+  "json": {
+    "indentWidth": 2,
+    "useTabs": false,
+    "newLineKind": "lf"
+  },
+  "includes": [
+    "**/*.json",
+    "**/*.jsonc"
+  ],
+  "excludes": [
+    "**/node_modules",
+    "**/bin",
+    "**/obj",
+    "**/.git"
+  ],
+  "plugins": [
+    "https://plugins.dprint.dev/json-0.19.4.wasm"
+  ]
+}

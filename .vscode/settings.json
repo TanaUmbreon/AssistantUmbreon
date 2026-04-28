@@ -1,0 +1,9 @@
+{
+  "[json][jsonc]": {
+    "editor.detectIndentation": false,
+    "editor.tabSize": 2,
+    "editor.insertSpaces": true,
+    "editor.defaultFormatter": "dprint.dprint",
+    "editor.formatOnSave": true
+  }
+}
