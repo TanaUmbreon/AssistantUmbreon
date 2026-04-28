@@ -2,34 +2,51 @@
 
 ## 1. アーキテクチャ概要
 
-```
-Program.cs（HostBuilder + DI設定）
-├── BotService              : IHostedService — Discord接続・スラッシュコマンド登録
-├── Commands/
-│   └── PeroperoCommandModule   : InteractionModuleBase — /move /list /cancel
-├── Services/
-│   ├── MoveService             : VCメンバー取得・移動実行
-│   └── SchedulerService        : IHostedService — スケジュール管理・実行
-└── Models/
-    └── ScheduledJob            : class — 予約データ＋CancellationTokenSource
-```
+- 📜Program.cs - HostBuilder + DI設定
+  - `BotService : IHostedService` - Discord接続・スラッシュコマンド登録
+- 📂Commands/
+  - `PeroperoCommandModule : InteractionModuleBase` - 各種コマンド実装（`/peropero`, `/peropero move`, `/peropero list`, `/peropero cancel`）
+- 📂Services/
+  - `MoveService` - VCメンバー取得・移動実行
+  - `SchedulerService: IHostedService` - スケジュール管理・実行
+- 📂Models/
+  - `ScheduledJob` - 予約データ+ `CancellationTokenSource` -> class
 
 ### 依存関係
 
-```
-BotService
-  ├─→ PeroperoCommandModule（登録）
-  └─→ SchedulerService（起動）
+```mermaid
+graph TD
+  subgraph Host["Program.cs"]
+    BS["BotService: IHostedService
+    (Discord接続・コマンド登録)"]
 
-PeroperoCommandModule
-  ├─→ MoveService（/move 即時実行）
-  └─→ SchedulerService（/move 予約登録・/list・/cancel）
+    CM["PeroperoCommandModule: InteractionModuleBase
+    (各種コマンド実装)"]
 
-SchedulerService
-  └─→ MoveService（スケジュール実行時）
+    MS["MoveService
+    (VCメンバー取得・移動実行)"]
 
-MoveService
-  └─→ Discord.Net IGuild（MoveMembers呼び出し）
+    SS["SchedulerService: IHostedService
+    (スケジュール管理・実行)"]
+
+    SJ["ScheduledJob
+    (予約データ+CTS)"]
+  end
+
+  BS -->|"モジュール登録"| CM
+  BS -->|"起動"| SS
+
+  CM -->|"/peropero
+  /peropero move 即時実行"| MS
+  CM -->|"/peropero move 予約登録
+  /peropero list
+  /peropero cancel"| SS
+
+  SS -->|"スケジュール実行時"| MS
+  SS -. "保持" .-> SJ
+
+  MS -->|"MoveMembers 呼び出し"| DA["Discord.Net
+  IGuild"]
 ```
 
 ---
@@ -67,7 +84,7 @@ public class PeroperoCommandModule : InteractionModuleBase<SocketInteractionCont
 ```
 
 **責務**
-- スラッシュコマンド `/peropero` のサブコマンド定義
+- スラッシュコマンド `/peropero` とそのサブコマンド定義
 - コマンド実行者のロール権限チェック（`Discord:AllowedRoleIds` と照合）
 - 実行者のVCへの接続確認
 - 移動元VCをコマンド実行時点で確定・記録

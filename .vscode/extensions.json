@@ -1,5 +1,6 @@
 {
   "recommendations": [
-    "dprint.dprint"
+    "dprint.dprint", // Dprint Code Formatter
+    "bierner.markdown-mermaid" // Markdown Preview Mermaid Support
   ]
 }
