@@ -1,4 +1,4 @@
-# 設計書 — Discord VC 一斉移動BOT
+# Discord BOT 設計
 
 ## 1. アーキテクチャ概要
 
