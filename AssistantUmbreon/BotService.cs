@@ -1,0 +1,70 @@
+using AssistantUmbreon.Commands;
+using Discord;
+using Discord.Interactions;
+using Discord.WebSocket;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Hosting;
+
+namespace AssistantUmbreon;
+
+public class BotService : IHostedService
+{
+    private readonly DiscordSocketClient _client;
+    private readonly InteractionService _interactions;
+    private readonly IServiceProvider _services;
+    private readonly IConfiguration _config;
+
+    public BotService(DiscordSocketClient client, InteractionService interactions, IServiceProvider services, IConfiguration config)
+    {
+        _client = client;
+        _interactions = interactions;
+        _services = services;
+        _config = config;
+    }
+
+    public async Task StartAsync(CancellationToken cancellationToken)
+    {
+        await _interactions.AddModuleAsync<PeroperoCommandModule>(_services);
+
+        _client.Ready += OnReadyAsync;
+        _client.InteractionCreated += OnInteractionCreatedAsync;
+        _interactions.InteractionExecuted += OnInteractionExecutedAsync;
+
+        var token = Environment.GetEnvironmentVariable("DISCORD_TOKEN")
+            ?? throw new InvalidOperationException("環境変数 'DISCORD_TOKEN' が設定されていません。");
+
+        await _client.LoginAsync(TokenType.Bot, token);
+        await _client.StartAsync();
+    }
+
+    public async Task StopAsync(CancellationToken cancellationToken)
+    {
+        await _client.LogoutAsync();
+        await _client.StopAsync();
+    }
+
+    private async Task OnReadyAsync()
+    {
+        var guildId = _config.GetValue<ulong>("Discord:GuildId");
+        await _interactions.RegisterCommandsToGuildAsync(guildId);
+    }
+
+    private async Task OnInteractionCreatedAsync(SocketInteraction interaction)
+    {
+        var context = new SocketInteractionContext(_client, interaction);
+        await _interactions.ExecuteCommandAsync(context, _services);
+    }
+
+    private async Task OnInteractionExecutedAsync(ICommandInfo _, IInteractionContext context, IResult result)
+    {
+        if (result.IsSuccess)
+            return;
+
+        var message = _config["peropero:failure"]!;
+
+        if (context.Interaction.HasResponded)
+            await context.Interaction.FollowupAsync(message);
+        else
+            await context.Interaction.RespondAsync(message);
+    }
+}
