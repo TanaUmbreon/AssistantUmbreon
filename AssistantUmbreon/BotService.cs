@@ -45,7 +45,9 @@ public class BotService : IHostedService
 
     private async Task OnReadyAsync()
     {
-        var guildId = _config.GetValue<ulong>("Discord:GuildId");
+        var guildIdStr = Environment.GetEnvironmentVariable("GUILD_ID")
+            ?? throw new InvalidOperationException("環境変数 'GUILD_ID' が設定されていません。");
+        var guildId = ulong.Parse(guildIdStr);
         await _interactions.RegisterCommandsToGuildAsync(guildId);
     }
 

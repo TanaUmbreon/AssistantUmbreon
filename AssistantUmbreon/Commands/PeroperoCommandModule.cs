@@ -24,7 +24,7 @@ public class PeroperoCommandModule : InteractionModuleBase<SocketInteractionCont
     {
         if (!HasPermission())
         {
-            await RespondAsync(_config["peropero:no_permission_from_member"]!, ephemeral: true);
+            await RespondAsync(_config["peropero:no_permission_from_member"]!);
             return;
         }
 
@@ -37,7 +37,7 @@ public class PeroperoCommandModule : InteractionModuleBase<SocketInteractionCont
     {
         if (!HasPermission())
         {
-            await RespondAsync(_config["peropero:no_permission_from_member"]!, ephemeral: true);
+            await RespondAsync(_config["peropero:no_permission_from_member"]!);
             return;
         }
 
@@ -73,7 +73,13 @@ public class PeroperoCommandModule : InteractionModuleBase<SocketInteractionCont
 
     private bool HasPermission()
     {
-        var allowedRoleIds = _config.GetSection("Discord:AllowedRoleIds").Get<ulong[]>() ?? [];
+        var raw = Environment.GetEnvironmentVariable("ALLOWED_ROLE_IDS") ?? "";
+        var allowedRoleIds = raw
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(s => ulong.TryParse(s, out var id) ? id : 0UL)
+            .Where(id => id != 0)
+            .ToArray();
+
         if (allowedRoleIds.Length == 0)
             return false;
 
