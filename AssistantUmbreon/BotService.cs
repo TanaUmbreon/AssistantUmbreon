@@ -59,14 +59,17 @@ public class BotService : IHostedService
 
     private async Task OnInteractionExecutedAsync(ICommandInfo _, IInteractionContext context, IResult result)
     {
-        if (result.IsSuccess)
-            return;
+        if (result.IsSuccess) { return; }
 
         var message = _config["peropero:failure"]!;
 
         if (context.Interaction.HasResponded)
+        {
             await context.Interaction.FollowupAsync(message);
+        }
         else
+        {
             await context.Interaction.RespondAsync(message);
+        }
     }
 }

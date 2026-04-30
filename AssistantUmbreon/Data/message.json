@@ -4,15 +4,17 @@
     "failure": "ごめんね、よく分からなくて失敗しちゃった。何でもやるからゆるして……",
 
     "default": {
-      "success": "うわっ！　ここでぺろぺろするだけはやめてよお！　ちゃんと何してほしいのか言ってよお！"
+      "success": "うわっ！　ぺろぺろするだけはやめてよお！　ちゃんと何してほしいのか言ってよお！"
     },
     "move": {
-      "not_in_vc": "移動したいボイスチャンネルのチャットでぺろぺろしてね！",
-      "registered": "分かった！　{executeAt}にここのメンバーを {toVc} に移動するね！（予約ID: {id}）",
+      "not_in_from_vc": "移動したいボイスチャンネルのチャットでぺろぺろしてね！",
+      "not_specified_to_vc": "移動先のボイスチャンネルを決めてもう一回やってみて！",
+      "same_vc": "んん～、同じボイスチャンネルに移動しても意味ないよ……。",
+      "registered": "分かった！　{executeAt}にここのメンバーを '{toVc}' に移動するね！（予約ID: {id}）",
       "invalid_format": "あれ……、日時の形式がなんか違うみたい。「yyyy-MM-dd HH:mm」の形式にしてもう一回やってみて！",
       "past_datetime": "その日時、もう過ぎてるよ……。未来の日時にしてもう一回やってみて！",
-      "success_with_immediate": "{fromVc} のメンバーをここに移動したよ！",
-      "success_with_scheduled": "時間になったから {fromVc} のメンバーをここに移動したよ！（予約ID: {id}）",
+      "success_with_immediate": "'{fromVc}' のメンバーをここに移動したよ！",
+      "success_with_scheduled": "時間になったから '{fromVc}' のメンバーをここに移動したよ！（予約ID: {id}）",
       "no_members": "あれ……、移動するメンバーが誰もいないんだけど",
       "failure_with_immediate": "あっ、しまった！　うまくメンバー移動できなかったよ……。ごめんね",
       "failure_with_scheduled": "あっ、しまった！　予約してたメンバー移動、うまくいかなかったよ……。ごめんね（予約ID: {id}）"

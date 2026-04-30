@@ -19,7 +19,7 @@ public class PeroperoCommandModule : InteractionModuleBase<SocketInteractionCont
         _moveService = moveService;
     }
 
-    [SlashCommand("umbreon", "唐突にブラッキーくんをぺろぺろする。")]
+    [SlashCommand("umbreon", "唐突にブラッキーくんをぺろぺろするだけ。")]
     public async Task PeroperoAsync()
     {
         if (!HasPermission())
@@ -31,9 +31,8 @@ public class PeroperoCommandModule : InteractionModuleBase<SocketInteractionCont
         await RespondAsync(_config["peropero:default:success"]!);
     }
 
-    [SlashCommand("move", "VC のメンバーを一斉移動する。")]
-    public async Task MoveAsync(
-        [Summary("to", "移動先のボイスチャンネル")] IVoiceChannel to)
+    [SlashCommand("move", "ボイスチャンネルに参加しているメンバーを一斉移動する。")]
+    public async Task MoveAsync([Summary("to", "移動先のボイスチャンネル")]IVoiceChannel toVc)
     {
         if (!HasPermission())
         {
@@ -43,21 +42,35 @@ public class PeroperoCommandModule : InteractionModuleBase<SocketInteractionCont
 
         if (Context.Channel is not IVoiceChannel fromVc)
         {
-            await RespondAsync(_config["peropero:move:not_in_vc"]!);
+            await RespondAsync(_config["peropero:move:not_in_from_vc"]!);
+            return;
+        }
+
+        if (toVc is null)
+        {
+            await RespondAsync(_config["peropero:move:not_specified_to_vc"]!);
+            return;
+        }
+
+        if (fromVc.Id == toVc.Id)
+        {
+            await RespondAsync(_config["peropero:move:same_vc"]!);
             return;
         }
 
         await DeferAsync();
 
-        var result = await _moveService.ExecuteAsync(fromVc, to);
+        var result = await _moveService.ExecuteAsync(fromVc, toVc);
 
         if (result.IsSuccess)
         {
             var msg = _config["peropero:move:success_with_immediate"]!
                 .Replace("{fromVc}", fromVc.Name);
 
-            if (to is IMessageChannel toTextCh)
+            if (toVc is IMessageChannel toTextCh)
+            {
                 await toTextCh.SendMessageAsync(msg);
+            }
 
             await DeleteOriginalResponseAsync();
         }
