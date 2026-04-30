@@ -14,20 +14,21 @@
 | `/peropero list` | 予約移動のスケジュール表示 |
 | `/peropero cancel <id>` | 予約移動のキャンセル |
 
-> **⚠️注意**: 以下のコマンドは現バージョンで未実装です。
+> **⚠️注意** - 以下のコマンドは現バージョンで未実装です。
 
 - `/peropero move`: 予約実行が未実装（即時実行は可能）
 - `/peropero list`
 - `/peropero cancel`
 
-> **⚠️注意**: BOT の再起動で予約移動のスケジュールは失われます。再起動後は再予約が必要です。
+> **⚠️注意** - BOT の再起動で予約移動のスケジュールは失われます。再起動後は再予約が必要です。
 
 ## 2. アプリ実行に必要なもの
 
 ### 2.1. 利用者側で用意するもの
 
 - Discord の設定:
-  - [Discord Developer Portal](https://discord.com/developers/home) で作成した BOT のトークン。
+  - [Discord Developer Portal](https://discord.com/developers/home) で作成した BOT およびそのトークン。
+    - BOT 名はブラッキーくんとして、アイコンはふさわしいものを設定してください。
   - 上記 BOT を招待済みの Discord サーバー。
   - コマンド実行を許可する任意のロール。
 - 実行端末の設定:
@@ -35,7 +36,7 @@
     - または [.NET 10](https://dotnet.microsoft.com/ja-jp/download/dotnet/10.0) の「.NET Runtime」がインストールされた PC（ローカル実行環境向け）。
     - または [.NET 10](https://dotnet.microsoft.com/ja-jp/download/dotnet/10.0) の「SDK」がインストールされた PC（開発者向け）。
 
-> **⚠️注意**: このアプリは実行している間のみ、 Discord サーバー内でコマンドが使えるようになります。そのためアプリは常時稼働している前提です。
+> **⚠️注意** - このアプリは実行している間のみ、 Discord サーバー内でコマンドが使えるようになります。そのためアプリは常時稼働している前提です。
 
 ### 2.2. BOT に必要なスコープと権限
 
