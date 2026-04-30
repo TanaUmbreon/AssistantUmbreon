@@ -9,7 +9,10 @@ public class MoveService
     {
         try
         {
-            var users = (await fromVc.GetUsersAsync().FlattenAsync()).ToList();
+            // Note: `fromVc.GetUsersAsync()` だけだと、チャット開いているだけで VC に参加していないメンバーも含まれている？
+            var users = (await fromVc.GetUsersAsync().FlattenAsync())
+                .Where(u => u.VoiceChannel is not null && u.VoiceChannel.Id == fromVc.Id)
+                .ToList();
 
             if (users.Count == 0)
                 return new MoveResult(false, 0, "no_members");
