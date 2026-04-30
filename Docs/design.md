@@ -5,7 +5,7 @@
 - 📜Program.cs - HostBuilder + DI設定
   - `BotService : IHostedService` - Discord接続・スラッシュコマンド登録
 - 📂Commands/
-  - `PeroperoCommandModule : InteractionModuleBase` - 各種コマンド実装（`/peropero`, `/peropero move`, `/peropero list`, `/peropero cancel`）
+  - `PeroperoCommandModule : InteractionModuleBase` - 各種コマンド実装（`/peropero umbreon`, `/peropero move`, `/peropero list`, `/peropero cancel`）
 - 📂Services/
   - `MoveService` - VCメンバー取得・移動実行
   - `SchedulerService: IHostedService` - スケジュール管理・実行
@@ -49,11 +49,9 @@ graph TD
   IGuild"]
 ```
 
----
-
 ## 2. クラス設計
 
-### 2.1 BotService
+### 2.1. BotService
 
 ```csharp
 public class BotService : IHostedService
@@ -77,7 +75,7 @@ public class BotService : IHostedService
 
 ---
 
-### 2.2 PeroperoCommandModule
+### 2.2. PeroperoCommandModule
 
 ```csharp
 public class PeroperoCommandModule : InteractionModuleBase<SocketInteractionContext>
@@ -112,9 +110,7 @@ public class PeroperoCommandModule : InteractionModuleBase<SocketInteractionCont
 | `at` が過去日時 | エラーメッセージを返す |
 | `at` のフォーマット不正 | エラーメッセージを返す（期待フォーマット: `yyyy-MM-dd HH:mm` または `HH:mm`） |
 
----
-
-### 2.3 MoveService
+### 2.3. MoveService
 
 ```csharp
 public class MoveService
@@ -150,9 +146,7 @@ public record MoveResult(
 4. 全員移動後に `MoveResult` を返す
 5. 例外発生時は `IsSuccess = false` で `ErrorMessage` にメッセージをセットして返す
 
----
-
-### 2.4 SchedulerService
+### 2.4. SchedulerService
 
 ```csharp
 public class SchedulerService : IHostedService
@@ -196,9 +190,7 @@ private readonly SemaphoreSlim _lock = new(1, 1); // スレッドセーフなCRU
    g. 完了後 → リストからジョブを削除
 ```
 
----
-
-### 2.5 ScheduledJob
+### 2.5. ScheduledJob
 
 ```csharp
 public class ScheduledJob
@@ -220,11 +212,9 @@ public class ScheduledJob
 | `NotifyChannelId` | `ulong` | エラー通知先テキストチャンネルのID（コマンドを実行したテキストチャンネル） |
 | `Cts` | `CancellationTokenSource` | キャンセル制御用（`new()` で初期化） |
 
----
-
 ## 3. シーケンス図
 
-### 3.1 `/peropero move <to>` — 即時実行
+### 3.1. `/peropero move <to>` — 即時実行
 
 ```
 User → Discord: /peropero move to:#vc-b
@@ -243,7 +233,7 @@ else 失敗時
 end
 ```
 
-### 3.2 `/peropero move <to> at:<datetime>` — 予約実行
+### 3.2. `/peropero move <to> at:<datetime>` — 予約実行
 
 ```
 User → Discord: /peropero move to:#vc-b at:2024-01-15 20:00
@@ -271,7 +261,7 @@ end
 SchedulerService → SchedulerService: リストからジョブ削除
 ```
 
-### 3.3 `/peropero cancel <id>`
+### 3.3. `/peropero cancel <id>`
 
 ```
 User → Discord: /peropero cancel xxxxxxxx
@@ -289,34 +279,31 @@ else 該当なし
 end
 ```
 
----
-
 ## 4. 設定値管理
 
-### 4.1 appsettings.json スキーマ
+### 4.1. appsettings.json スキーマ
 
 ```json
 {
-  "Discord": {
-    "GuildId": 123456789012345678,
-    "AllowedRoleIds": [
-      111111111111111111,
-      222222222222222222
-    ]
+  "TimeSynchronization": {
+    "NtpServer": "ntp.nict.jp",
+    "AllowableMilliseconds": 1000
   }
 }
 ```
 
-### 4.2 環境変数
+### 4.2. 環境変数
 
 | 変数名 | 説明 |
 |--------|------|
-| `DISCORD_TOKEN` | BOTのトークン |
+| `DISCORD_TOKEN` | BOT のトークン |
+| `GUILD_ID` | 接続先のサーバー ID |
+| `ALLOWED_ROLE_IDS` | コマンド実行を許可するロール ID （カンマ区切りで複数指定可能） |
 
-ローカル開発時は `.env` で管理し `.gitignore` に追加する。
-本番環境は `docker-compose.yml` の `environment:` で注入する。
+- ローカル開発時は `.env` で管理し `.gitignore` に追加する。
+- 本番環境は `docker-compose.yml` の `environment:` で注入する。
 
-### 4.3 docker-compose.yml（本番）
+### 4.3. docker-compose.yml（本番）
 
 ```yaml
 services:
@@ -324,6 +311,8 @@ services:
     build: .
     environment:
       - DISCORD_TOKEN=${DISCORD_TOKEN}
+      - GUILD_ID=${GUILD_ID}
+      - ALLOWED_ROLE_IDS=${ALLOWED_ROLE_IDS}
     restart: unless-stopped
 ```
 
