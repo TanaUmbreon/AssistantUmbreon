@@ -1,4 +1,5 @@
 using AssistantUmbreon;
+using AssistantUmbreon.Services;
 using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
@@ -43,6 +44,7 @@ IHost host = Host.CreateDefaultBuilder(args)
                     //
                 }));
 
+        services.AddSingleton<MoveService>();
         services.AddHostedService<BotService>();
     })
     .Build();
