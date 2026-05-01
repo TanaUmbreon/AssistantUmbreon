@@ -1,9 +1,9 @@
-using System.Diagnostics;
 using AssistantUmbreon.Services;
 using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 
 namespace AssistantUmbreon.Commands;
 
@@ -12,16 +12,20 @@ public class PeroperoCommandModule : InteractionModuleBase<SocketInteractionCont
 {
     private readonly IConfiguration _config;
     private readonly MoveService _moveService;
+    private readonly ILogger<PeroperoCommandModule> _logger;
 
-    public PeroperoCommandModule(IConfiguration config, MoveService moveService)
+    public PeroperoCommandModule(IConfiguration config, MoveService moveService, ILogger<PeroperoCommandModule> logger)
     {
         _config = config;
         _moveService = moveService;
+        _logger = logger;
     }
 
     [SlashCommand("umbreon", "唐突にブラッキーくんをぺろぺろするだけ。")]
     public async Task PeroperoAsync()
     {
+        LogCommandExecution("peropero umbreon");
+
         if (!HasPermission())
         {
             await RespondAsync(_config["peropero:no_permission_from_member"]!);
@@ -34,6 +38,8 @@ public class PeroperoCommandModule : InteractionModuleBase<SocketInteractionCont
     [SlashCommand("move", "ボイスチャンネルに参加しているメンバーを一斉移動する。")]
     public async Task MoveAsync([Summary("to", "移動先のボイスチャンネル")]IVoiceChannel toVc)
     {
+        LogCommandExecution("peropero move");
+
         if (!HasPermission())
         {
             await RespondAsync(_config["peropero:no_permission_from_member"]!);
@@ -82,6 +88,19 @@ public class PeroperoCommandModule : InteractionModuleBase<SocketInteractionCont
 
             await FollowupAsync(errorMsg);
         }
+    }
+
+    private void LogCommandExecution(string commandName)
+    {
+        var jst = TimeZoneInfo.FindSystemTimeZoneById("Asia/Tokyo");
+        var executedAt = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, jst);
+        _logger.LogInformation(
+            "コマンド実行: /{Command} | ユーザー: {GlobalName} (Username: {Username} | ID: {UserId}) | 実行日時: {ExecutedAt:yyyy-MM-dd HH:mm:ss} JST",
+            commandName,
+            Context.User.GlobalName,
+            Context.User.Username,
+            Context.User.Id,
+            executedAt);
     }
 
     private bool HasPermission()
