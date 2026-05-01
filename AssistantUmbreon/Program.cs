@@ -44,6 +44,7 @@ IHost host = Host.CreateDefaultBuilder(args)
                     //
                 }));
 
+        services.AddHostedService<NtpTimeCheckService>();
         services.AddSingleton<MoveService>();
         services.AddHostedService<BotService>();
     })

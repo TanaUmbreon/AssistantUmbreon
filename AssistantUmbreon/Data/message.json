@@ -27,5 +27,18 @@
       "success": "その予約、やらなくて良いんだね。分かった！（予約ID: {id}）",
       "not_found": "あれ……、そんな予約されてないよ？（予約ID: {id}）"
     }
+  },
+  "system": {
+    "time_synchronization_check": {
+      "disabled": "NTP 時刻同期チェックは無効化されています。",
+      "start_checking": "NTP サーバー '{ntpServer}' に接続して時刻同期を確認します...",
+      "success": "時刻同期 OK（差異: {diffMs} ミリ秒）",
+      "dns_resolve_failed": "NTP サーバー '{server}' の名前解決に失敗しました。",
+      "timeout": "NTP サーバー '{server}' からの応答がタイムアウトしました（5秒）。",
+      "invalid_packet": "NTP レスポンスのサイズが不正です。",
+      "npt_is_null": "時刻確認をする NTP サーバーのアドレスが指定されていません。設定したのちアプリを再起動してください。",
+      "time_cannot_get": "NTP サーバーから時刻を取得できませんでした。アドレス間違い、ネットワークの状態、対象サービスの障害情報などを確認してください。",
+      "is_not_synchronized": "NTP サーバーとの時刻が {allowableMilliseconds} ミリ秒以上離れています（NTP 時刻: {ntpTime}、システム時刻: {systemTime}）。システムの時刻を同期したのちアプリを再起動してください。"
+    }
   }
 }
