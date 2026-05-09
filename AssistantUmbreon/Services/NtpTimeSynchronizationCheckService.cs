@@ -9,7 +9,7 @@ namespace AssistantUmbreon.Services;
 /// <summary>
 /// ローカル時刻が NTP サーバーと同期されているかチェックする機能をホスティングサービスとして提供します。
 /// </summary>
-public class NtpTimeCheckService : IHostedService
+public class NtpTimeSynchronizationCheckService : IHostedService
 {
     private const bool DefaultEnabled = true;
     private const string DefaultNtpServer = "ntp.nict.jp";
@@ -18,7 +18,7 @@ public class NtpTimeCheckService : IHostedService
     /// <summary>アプリケーション設定</summary>
     private readonly IConfiguration _config;
     /// <summary>ログ出力オブジェクト</summary>
-    private readonly ILogger<NtpTimeCheckService> _logger;
+    private readonly ILogger<NtpTimeSynchronizationCheckService> _logger;
     /// <summary>時刻同期チェックをする事を示すフラグ</summary>
     private readonly bool _enabled;
     /// <summary>時刻を取得する NTP サーバーのアドレス</summary>
@@ -27,11 +27,11 @@ public class NtpTimeCheckService : IHostedService
     private readonly uint _allowableMilliseconds;
 
     /// <summary>
-    /// <see cref="NtpTimeCheckService"/> の新しいインスタンスを生成します。
+    /// <see cref="NtpTimeSynchronizationCheckService"/> の新しいインスタンスを生成します。
     /// </summary>
     /// <param name="config">アプリケーション設定。</param>
     /// <param name="logger">ログ出力オブジェクト。</param>
-    public NtpTimeCheckService(IConfiguration config, ILogger<NtpTimeCheckService> logger)
+    public NtpTimeSynchronizationCheckService(IConfiguration config, ILogger<NtpTimeSynchronizationCheckService> logger)
     {
         _config = config ?? throw new ArgumentNullException(nameof(config));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));

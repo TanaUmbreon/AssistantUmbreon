@@ -60,7 +60,7 @@ try
             services.AddSingleton<MoveService>();
 
             // IHostedService オブジェクトを登録する
-            services.AddHostedService<NtpTimeCheckService>();
+            services.AddHostedService<NtpTimeSynchronizationCheckService>();
             services.AddHostedService<BotService>();
         })
         .Build();
