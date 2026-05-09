@@ -39,6 +39,9 @@
       "npt_is_null": "時刻確認をする NTP サーバーのアドレスが指定されていません。設定したのちアプリを再起動してください。",
       "time_cannot_get": "NTP サーバーから時刻を取得できませんでした。アドレス間違い、ネットワークの状態、対象サービスの障害情報などを確認してください。",
       "is_not_synchronized": "NTP サーバーとの時刻が {allowableMilliseconds} ミリ秒以上離れています（NTP 時刻: {ntpTime}、システム時刻: {systemTime}）。システムの時刻を同期したのちアプリを再起動してください。"
+    },
+    "environment": {
+      "cannot_get": "環境変数 '{name}' が設定されていません。"
     }
   }
 }
