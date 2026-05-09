@@ -6,42 +6,65 @@ using Microsoft.Extensions.Logging;
 
 namespace AssistantUmbreon.Services;
 
+/// <summary>
+/// ローカル時刻が NTP サーバーと同期されているかチェックする機能をホスティングサービスとして提供します。
+/// </summary>
 public class NtpTimeCheckService : IHostedService
 {
-    private readonly IConfiguration _config;
-    private readonly ILogger<NtpTimeCheckService> _logger;
+    private const bool DefaultEnabled = true;
+    private const string DefaultNtpServer = "ntp.nict.jp";
+    private const uint DefalutAllowableMilliseconds = 1000;
 
+    /// <summary>アプリケーション設定</summary>
+    private readonly IConfiguration _config;
+    /// <summary>ログ出力オブジェクト</summary>
+    private readonly ILogger<NtpTimeCheckService> _logger;
+    /// <summary>時刻同期チェックをする事を示すフラグ</summary>
+    private readonly bool _enabled;
+    /// <summary>時刻を取得する NTP サーバーのアドレス</summary>
+    private readonly string _ntpServer;
+    /// <summary>同期していると許容する、ローカル時刻と NTP サーバー時刻のミリ秒単位の絶対時間差</summary>
+    private readonly uint _allowableMilliseconds;
+
+    /// <summary>
+    /// <see cref="NtpTimeCheckService"/> の新しいインスタンスを生成します。
+    /// </summary>
+    /// <param name="config">アプリケーション設定。</param>
+    /// <param name="logger">ログ出力オブジェクト。</param>
     public NtpTimeCheckService(IConfiguration config, ILogger<NtpTimeCheckService> logger)
     {
-        _config = config;
-        _logger = logger;
+        _config = config ?? throw new ArgumentNullException(nameof(config));
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+
+        _enabled = _config.GetValue("TimeSynchronizationCheck:Enabled", DefaultEnabled);
+        _ntpServer = _config.GetValue("TimeSynchronizationCheck:NtpServer", DefaultNtpServer);
+        _allowableMilliseconds = _config.GetValue("TimeSynchronizationCheck:AllowableMilliseconds", DefalutAllowableMilliseconds);
     }
 
     public async Task StartAsync(CancellationToken cancellationToken)
     {
-        if (!_config.GetValue<bool>("TimeSynchronizationCheck:Enabled"))
+        // 時刻同期チェックをしない場合は警告メッセージを出力して終了
+        if (!_enabled)
         {
             _logger.LogWarning(_config["system:time_synchronization_check:disabled"]!);
             return;
         }
 
-        var ntpServer = _config["TimeSynchronizationCheck:NtpServer"];
-        if (ntpServer is null)
+        // 取得先の NTP サーバーが設定されていない場合はエラー終了
+        if (string.IsNullOrEmpty(_ntpServer))
         {
             var msg = _config["system:time_synchronization_check:npt_is_null"]!;
             _logger.LogCritical(msg);
             throw new InvalidOperationException(msg);
         }
 
-        var allowableMs = _config.GetValue<int>("TimeSynchronizationCheck:AllowableMilliseconds");
-
         _logger.LogInformation(_config["system:time_synchronization_check:start_checking"]!
-            .Replace("{ntpServer}", ntpServer));
+            .Replace("{ntpServer}", _ntpServer));
 
         DateTimeOffset ntpTime;
         try
         {
-            ntpTime = await GetNtpTimeAsync(ntpServer, cancellationToken);
+            ntpTime = await GetNtpTimeAsync(_ntpServer, cancellationToken);
         }
         catch (Exception ex)
         {
@@ -51,25 +74,25 @@ public class NtpTimeCheckService : IHostedService
         }
 
         var systemTime = DateTimeOffset.UtcNow;
-        var diffMs = Math.Abs((ntpTime - systemTime).TotalMilliseconds);
-
-        if (diffMs > allowableMs)
+        uint diffMilliseconds = Convert.ToUInt32(Math.Ceiling(Math.Abs((ntpTime - systemTime).TotalMilliseconds)));
+        if (diffMilliseconds > _allowableMilliseconds)
         {
             var jst = TimeZoneInfo.FindSystemTimeZoneById("Asia/Tokyo");
-            var fmt = "yyyy-MM-dd HH:mm:ss.fff";
+            var format = "yyyy-MM-dd HH:mm:ss.fff";
             var msg = _config["system:time_synchronization_check:is_not_synchronized"]!
-                .Replace("{allowableMilliseconds}", allowableMs.ToString())
-                .Replace("{ntpTime}", TimeZoneInfo.ConvertTime(ntpTime, jst).ToString(fmt))
-                .Replace("{systemTime}", TimeZoneInfo.ConvertTime(systemTime, jst).ToString(fmt));
+                .Replace("{allowableMilliseconds}", _allowableMilliseconds.ToString())
+                .Replace("{ntpTime}", TimeZoneInfo.ConvertTime(ntpTime, jst).ToString(format))
+                .Replace("{systemTime}", TimeZoneInfo.ConvertTime(systemTime, jst).ToString(format));
             _logger.LogCritical(msg);
             throw new InvalidOperationException(msg);
         }
 
         _logger.LogInformation(_config["system:time_synchronization_check:success"]!
-            .Replace("{diffMs}", $"{diffMs:F0}"));
+            .Replace("{diffMs}", diffMilliseconds.ToString()));
     }
 
-    public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+    public Task StopAsync(CancellationToken cancellationToken)
+        => Task.CompletedTask;
 
     private async Task<DateTimeOffset> GetNtpTimeAsync(string server, CancellationToken cancellationToken)
     {
