@@ -6,7 +6,7 @@ using Microsoft.Extensions.Logging;
 namespace AssistantUmbreon.Services;
 
 /// <summary>
-/// ローカル時刻が NTP サーバーと同期されているかチェックする機能をホスティングサービスとして提供します。
+/// ローカル時刻が NTP サーバーと同期されているかチェックする機能をホストされたサービスとして提供します。
 /// </summary>
 public class NtpTimeSynchronizationCheckService : IHostedService
 {
@@ -42,14 +42,14 @@ public class NtpTimeSynchronizationCheckService : IHostedService
 
     public async Task StartAsync(CancellationToken cancellationToken)
     {
-        // 時刻同期チェックをしない場合は警告メッセージを出力して終了
+        // 時刻同期チェックをしない場合は警告メッセージを出力して終了する
         if (!_enabled)
         {
             _logger.LogWarning(_config["system:time_synchronization_check:disabled"]!);
             return;
         }
 
-        // 取得先の NTP サーバーが設定されていない場合はエラー終了
+        // 取得先の NTP サーバーが設定されていない場合はアプリを停止する
         if (string.IsNullOrEmpty(_ntpServer))
         {
             var msg = _config["system:time_synchronization_check:npt_is_null"]!;
@@ -59,20 +59,22 @@ public class NtpTimeSynchronizationCheckService : IHostedService
         _logger.LogInformation(_config["system:time_synchronization_check:start_checking"]!
             .Replace("{ntpServer}", _ntpServer));
 
-        // NTP サーバーから時刻を取得する
         DateTimeOffset ntpTime;
         try
         {
+            // NTP サーバーから時刻を取得する
             var client = new NtpClient(_ntpServer);
             var clock = await client.QueryAsync();
             ntpTime = clock.UtcNow;
         }
         catch (Exception ex)
         {
+            // 取得できない場合はアプリを停止する
             var msg = _config["system:time_synchronization_check:time_cannot_get"]!;
             throw new InvalidOperationException(msg, ex);
         }
 
+        // ローカルと NTP サーバーの
         var localTime = DateTimeOffset.UtcNow;
         uint diffMilliseconds = Convert.ToUInt32(Math.Ceiling(Math.Abs((ntpTime - localTime).TotalMilliseconds)));
         if (diffMilliseconds > _allowableMilliseconds)

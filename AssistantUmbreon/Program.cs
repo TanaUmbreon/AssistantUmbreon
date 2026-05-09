@@ -50,7 +50,8 @@ try
                                      GatewayIntents.GuildMessages
                 }));
 
-            // 属性ベース（SlashCommand 属性）で実装したスラッシュコマンドのサービスを登録する
+            // 属性ベース（SlashCommand 属性）で実装したスラッシュコマンドを
+            // サーバーに登録して実行するためのサービスを登録する
             services.AddSingleton(provider =>
                 new InteractionService(
                     provider.GetRequiredService<DiscordSocketClient>(),
