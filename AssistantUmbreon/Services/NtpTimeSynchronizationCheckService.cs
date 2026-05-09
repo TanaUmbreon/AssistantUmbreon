@@ -3,6 +3,7 @@ using System.Net.Sockets;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using NtpClient;
 
 namespace AssistantUmbreon.Services;
 
@@ -61,10 +62,25 @@ public class NtpTimeSynchronizationCheckService : IHostedService
         _logger.LogInformation(_config["system:time_synchronization_check:start_checking"]!
             .Replace("{ntpServer}", _ntpServer));
 
-        DateTimeOffset ntpTime;
+        // IPv4優先でアドレスを解決する
+        var addresses = await Dns.GetHostAddressesAsync(_ntpServer, cancellationToken);
+        if (addresses.Length == 0)
+        {
+            throw new InvalidOperationException(_config["system:time_synchronization_check:dns_resolve_failed"]!
+                .Replace("{server}", _ntpServer));
+        }
+        var address = addresses.FirstOrDefault(a => a.AddressFamily == AddressFamily.InterNetwork)
+            ?? addresses[0];
+
+        DateTime ntpTime;
         try
         {
-            ntpTime = await GetNtpTimeAsync(_ntpServer, cancellationToken);
+            ntpTime = await Task.Run(() =>
+            {
+
+                INtpConnection connection = new NtpConnection(address.ToString());
+                return connection.GetUtc();
+            });
         }
         catch (Exception ex)
         {
@@ -73,7 +89,7 @@ public class NtpTimeSynchronizationCheckService : IHostedService
             throw new InvalidOperationException(msg, ex);
         }
 
-        var systemTime = DateTimeOffset.UtcNow;
+        var systemTime = DateTime.UtcNow;
         uint diffMilliseconds = Convert.ToUInt32(Math.Ceiling(Math.Abs((ntpTime - systemTime).TotalMilliseconds)));
         if (diffMilliseconds > _allowableMilliseconds)
         {

@@ -7,13 +7,22 @@ using Microsoft.Extensions.Logging;
 
 namespace AssistantUmbreon.Commands;
 
-[Group("peropero", "ボイスチャンネル一斉移動 BOT のコマンド")]
+/// <summary>
+/// ブラッキーくん BOT を操作する為のスラッシュコマンドを提供します。
+/// </summary>
+[Group("peropero", "ブラッキーくん BOT のコマンドグループ")]
 public class PeroperoCommandModule : InteractionModuleBase<SocketInteractionContext>
 {
     private readonly IConfiguration _config;
     private readonly MoveService _moveService;
     private readonly ILogger<PeroperoCommandModule> _logger;
 
+    /// <summary>
+    /// <see cref="PeroperoCommandModule"/> の新しいインスタンスを生成します。
+    /// </summary>
+    /// <param name="config">コンフィグ。</param>
+    /// <param name="moveService"></param>
+    /// <param name="logger"></param>
     public PeroperoCommandModule(IConfiguration config, MoveService moveService, ILogger<PeroperoCommandModule> logger)
     {
         _config = config;
@@ -21,6 +30,10 @@ public class PeroperoCommandModule : InteractionModuleBase<SocketInteractionCont
         _logger = logger;
     }
 
+    /// <summary>
+    /// ブラッキーくんを唐突にぺろぺろして困惑させます。
+    /// </summary>
+    /// <returns>戻り値なしの非同期操作。</returns>
     [SlashCommand("umbreon", "唐突にブラッキーくんをぺろぺろするだけ。")]
     public async Task PeroperoAsync()
     {
@@ -90,6 +103,10 @@ public class PeroperoCommandModule : InteractionModuleBase<SocketInteractionCont
         }
     }
 
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <param name="commandName"></param>
     private void LogCommandExecution(string commandName)
     {
         var jst = TimeZoneInfo.FindSystemTimeZoneById("Asia/Tokyo");
@@ -103,20 +120,24 @@ public class PeroperoCommandModule : InteractionModuleBase<SocketInteractionCont
             executedAt);
     }
 
+    /// <summary>
+    /// 現在のコンテキストのユーザーが、この BOT のコマンド実行権限を持っている事を判定します。
+    /// </summary>
+    /// <returns>実行権限を持っている場合は true、持っていない場合は false。</returns>
     private bool HasPermission()
     {
-        var raw = Environment.GetEnvironmentVariable("ALLOWED_ROLE_IDS") ?? "";
-        var allowedRoleIds = raw
+        // ユーザーがサーバーのメンバーでない場合は実行権限なし
+        if (Context.User is not SocketGuildUser guildUser) { return false; }
+
+        // 環境変数からコマンド実行を許可するロール ID を取得する
+        var rawIds = Environment.GetEnvironmentVariable("ALLOWED_ROLE_IDS") ?? "";
+        var allowedRoleIds = rawIds
             .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
             .Select(s => ulong.TryParse(s, out var id) ? id : 0UL)
             .Where(id => id != 0)
             .ToArray();
 
-        if (allowedRoleIds.Length == 0)
-            return false;
-
-        if (Context.User is not SocketGuildUser guildUser)
-            return false;
+        if (allowedRoleIds.Length == 0) { return false; }
 
         return guildUser.Roles.Any(r => allowedRoleIds.Contains(r.Id));
     }
