@@ -195,7 +195,11 @@ public class PeroperoCommandModule : InteractionModuleBase<SocketInteractionCont
             NotifyChannelId = Context.Channel.Id,
         };
 
-        await _schedulerService.AddJobAsync(job);
+        if (!await _schedulerService.TryAddJobAsync(job))
+        {
+            await RespondAsync(_config["peropero:move:duplicate_time"]!);
+            return;
+        }
 
         var shortId = job.Id.ToString("N")[..8];
         var executeAtJst = TimeZoneInfo.ConvertTime(executeAt.Value, Jst);

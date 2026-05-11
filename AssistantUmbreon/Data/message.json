@@ -13,6 +13,7 @@
       "registered": "分かった！　{executeAt}にここのメンバーを '{toVc}' に移動するね！（予約ID: {id}）",
       "invalid_format": "あれ……、日時の形式がなんか違うみたい。「yyyy-MM-dd HH:mm」の形式にしてもう一回やってみて！",
       "past_datetime": "その日時、もう過ぎてるよ……。未来の日時にしてもう一回やってみて！",
+      "duplicate_time": "その時間にはもう予約が入ってるよ。予約をキャンセルして予約し直すか、別の時間にしてね！",
       "success_with_immediate": "'{fromVc}' のメンバーをここに移動したよ！",
       "success_with_scheduled": "時間になったから '{fromVc}' のメンバーをここに移動したよ！（予約ID: {id}）",
       "no_members": "あれ……、移動するメンバーが誰もいないんだけど",
