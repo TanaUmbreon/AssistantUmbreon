@@ -6,7 +6,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
-namespace AssistantUmbreon.Services;
+namespace AssistantUmbreon.Services.Hosting;
 
 /// <summary>
 /// ブラッキーくん BOT の機能をホストされたサービスとして提供します。

@@ -3,7 +3,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
-namespace AssistantUmbreon.Services;
+namespace AssistantUmbreon.Services.Hosting;
 
 /// <summary>
 /// ローカル時刻が NTP サーバーと同期されているかチェックする機能をホストされたサービスとして提供します。

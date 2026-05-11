@@ -1,4 +1,5 @@
 using AssistantUmbreon.Services;
+using AssistantUmbreon.Services.Hosting;
 using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
@@ -60,8 +61,12 @@ try
             // Hack: DIコンテナ化する必要ある？
             services.AddSingleton<MoveService>();
 
+            // SchedulerService はシングルトンとして登録し、同一インスタンスを IHostedService としても使用する
+            services.AddSingleton<SchedulerService>();
+
             // IHostedService オブジェクトを登録する
             services.AddHostedService<NtpTimeSynchronizationCheckService>();
+            services.AddHostedService(sp => sp.GetRequiredService<SchedulerService>());
             services.AddHostedService<BotService>();
         })
         .Build();
