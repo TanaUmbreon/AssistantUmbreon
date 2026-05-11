@@ -20,7 +20,7 @@ description: スケジューラ機能の実装・変更ガイド。SchedulerServ
 public class ScheduledJob
 {
     public Guid Id { get; init; } = Guid.NewGuid();
-    public CancellationTokenSource Cts { get; } = new();
+    public CancellationTokenSource CancellationToken { get; } = new();
     // その他プロパティは design.md を参照
 }
 ```
@@ -35,4 +35,4 @@ public class ScheduledJob
 `SchedulerService` 内のリスト操作には `SemaphoreSlim(1, 1)` を使う。
 
 ### キャンセル制御
-`Task.Delay(差分, job.Cts.Token)` で待機し、`OperationCanceledException` をキャッチしてキャンセルを処理する。実行失敗時は `MoveResult` でエラーを受け取り、`SchedulerService` が通知チャンネルに投稿する。
+`Task.Delay(差分, job.CancellationToken.Token)` で待機し、`OperationCanceledException` をキャッチしてキャンセルを処理する。実行失敗時は `MoveResult` でエラーを受け取り、`SchedulerService` が通知チャンネルに投稿する。

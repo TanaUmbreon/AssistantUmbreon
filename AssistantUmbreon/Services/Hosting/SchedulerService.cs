@@ -37,7 +37,7 @@ public class SchedulerService : IHostedService
         {
             foreach (var job in _jobs)
             {
-                job.CancelToken.Cancel();
+                job.CancellationToken.Cancel();
             }
             _jobs.Clear();
         }
@@ -47,11 +47,13 @@ public class SchedulerService : IHostedService
         }
     }
 
-    public async Task AddJobAsync(ScheduledJob job)
+    public async Task<bool> TryAddJobAsync(ScheduledJob job)
     {
         await _lock.WaitAsync();
         try
         {
+            if (_jobs.Any(j => j.ExecuteAt == job.ExecuteAt))
+                return false;
             _jobs.Add(job);
         }
         finally
@@ -60,6 +62,7 @@ public class SchedulerService : IHostedService
         }
 
         _ = Task.Run(() => RunJobAsync(job));
+        return true;
     }
 
     public IReadOnlyList<ScheduledJob> GetAllJobs()
@@ -75,14 +78,14 @@ public class SchedulerService : IHostedService
         }
     }
 
-    public async Task<bool> CancelJobAsync(string shortId)
+    public async Task<bool> CancelJobAsync(string id)
     {
         await _lock.WaitAsync();
         try
         {
-            var job = _jobs.FirstOrDefault(j => j.Id.ToString("N")[..8] == shortId);
+            var job = _jobs.FirstOrDefault(j => j.Id.ToString("N")[..8] == id);
             if (job is null) return false;
-            job.CancelToken.Cancel();
+            job.CancellationToken.Cancel();
             _jobs.Remove(job);
             return true;
         }
@@ -100,7 +103,7 @@ public class SchedulerService : IHostedService
             var delay = job.ExecuteAt - DateTimeOffset.UtcNow;
             if (delay > TimeSpan.Zero)
             {
-                await Task.Delay(delay, job.CancelToken.Token);
+                await Task.Delay(delay, job.CancellationToken.Token);
             }
 
             var result = await _moveService.ExecuteAsync(job.FromVc, job.ToVc);

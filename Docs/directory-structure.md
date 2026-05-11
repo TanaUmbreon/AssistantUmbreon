@@ -18,12 +18,14 @@
 
 - `AssistantUmbreon.csproj` — プロジェクト定義（ターゲット: net10.0）
 - `Program.cs` — エントリーポイント（HostBuilder + DI 設定）
-- `BotService.cs` — Discord 接続・スラッシュコマンド登録
 - `Commands/` — スラッシュコマンド実装
   - `PeroperoCommandModule.cs` — `/peropero` 各サブコマンドのハンドラー
 - `Services/` — ビジネスロジック
   - `MoveService.cs` — VC メンバー取得・移動実行
-  - `SchedulerService.cs` — スケジュール管理・実行（`IHostedService`）
+  - `Hosting/` — `IHostedService` 実装
+    - `BotService.cs` — Discord 接続・スラッシュコマンド登録
+    - `SchedulerService.cs` — スケジュール管理・実行
+    - `NtpTimeSynchronizationCheckService.cs` — NTP 時刻同期チェック
 - `Models/` — データモデル
   - `ScheduledJob.cs` — 予約データ＋`CancellationTokenSource`
 - `Data/` — 静的データファイル

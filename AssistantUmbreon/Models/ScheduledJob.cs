@@ -27,5 +27,5 @@ public class ScheduledJob
 
     public required ulong RequestedBy { get; init; }
     public required ulong NotifyChannelId { get; init; }
-    public CancellationTokenSource CancelToken { get; } = new();
+    public CancellationTokenSource CancellationToken { get; } = new();
 }

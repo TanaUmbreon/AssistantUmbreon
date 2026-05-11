@@ -3,12 +3,14 @@
 ## 1. アーキテクチャ概要
 
 - 📜Program.cs - HostBuilder + DI設定
-  - `BotService : IHostedService` - Discord接続・スラッシュコマンド登録
 - 📂Commands/
   - `PeroperoCommandModule : InteractionModuleBase` - 各種コマンド実装（`/peropero umbreon`, `/peropero move`, `/peropero list`, `/peropero cancel`）
 - 📂Services/
   - `MoveService` - VCメンバー取得・移動実行
-  - `SchedulerService: IHostedService` - スケジュール管理・実行
+  - 📂Hosting/
+    - `BotService : IHostedService` - Discord接続・スラッシュコマンド登録
+    - `SchedulerService : IHostedService` - スケジュール管理・実行
+    - `NtpTimeSynchronizationCheckService : IHostedService` - NTP時刻同期チェック
 - 📂Models/
   - `ScheduledJob` - 予約データ+ `CancellationTokenSource` -> class
 
@@ -16,9 +18,12 @@
 
 ```mermaid
 graph TD
-  subgraph Host["Program.cs"]
+  subgraph Host["Program.cs (IHost)"]
     BS["BotService: IHostedService
     (Discord接続・コマンド登録)"]
+
+    NS["NtpTimeSynchronizationCheckService: IHostedService
+    (NTP時刻同期チェック)"]
 
     CM["PeroperoCommandModule: InteractionModuleBase
     (各種コマンド実装)"]
@@ -30,11 +35,10 @@ graph TD
     (スケジュール管理・実行)"]
 
     SJ["ScheduledJob
-    (予約データ+CTS)"]
+    (予約データ+CancellationToken)"]
   end
 
   BS -->|"モジュール登録"| CM
-  BS -->|"起動"| SS
 
   CM -->|"/peropero
   /peropero move 即時実行"| MS
@@ -71,7 +75,7 @@ public class BotService : IHostedService
 
 **設定値**
 - `DISCORD_TOKEN`（環境変数）: ログイントークン
-- `Discord:GuildId`（appsettings.json）: ギルドコマンド登録先
+- `GUILD_ID`（環境変数）: ギルドコマンド登録先
 
 ---
 
@@ -134,17 +138,17 @@ public async Task<MoveResult> ExecuteAsync(
 ```csharp
 public record MoveResult(
     bool IsSuccess,
-    int MovedCount,
-    string? ErrorMessage
+    IReadOnlyList<IGuildUser> MovedUsers,
+    Exception? Error = null
 );
 ```
 
 **動作**
 1. `fromVc.GetUsersAsync()` で接続中の全メンバーを取得
-2. メンバーが0人の場合は `IsSuccess = false`、`MovedCount = 0`、`ErrorMessage` に該当メッセージをセットして返す
+2. メンバーが0人の場合は `IsSuccess = false`、`MovedUsers = []`、`Error = null` で返す
 3. 各メンバーに対して `user.ModifyAsync(x => x.Channel = toVc)` を呼び出す
-4. 全員移動後に `MoveResult` を返す
-5. 例外発生時は `IsSuccess = false` で `ErrorMessage` にメッセージをセットして返す
+4. 全員移動後に `IsSuccess = true`、`MovedUsers` に移動したメンバー一覧をセットして返す
+5. 例外発生時は `IsSuccess = false`、`Error` に例外をセットして返す
 
 ### 2.4. SchedulerService
 
@@ -172,7 +176,7 @@ private readonly SemaphoreSlim _lock = new(1, 1); // スレッドセーフなCRU
 |----------|-----------|------|
 | `AddJobAsync` | `(ScheduledJob job) → Task` | ジョブ登録・タスク起動 |
 | `GetAllJobs` | `() → IReadOnlyList<ScheduledJob>` | 一覧取得 |
-| `CancelJobAsync` | `(Guid id) → Task<bool>` | CTSキャンセル・リストから削除。該当なしは `false` |
+| `CancelJobAsync` | `(string id) → Task<bool>` | CTSキャンセル・リストから削除。該当なしは `false` |
 | `StartAsync` | `(CancellationToken)` | IHostedService実装（初期化のみ） |
 | `StopAsync` | `(CancellationToken)` | 全ジョブをキャンセルしてシャットダウン |
 
@@ -182,7 +186,7 @@ private readonly SemaphoreSlim _lock = new(1, 1); // スレッドセーフなCRU
 1. job をリストに追加
 2. Task.Run で以下を非同期実行:
    a. 現在時刻 → ExecuteAt までの差分を計算
-   b. Task.Delay(差分, job.Cts.Token) で待機
+   b. Task.Delay(差分, job.CancellationToken.Token) で待機
    c. キャンセルされた場合 → OperationCanceledException をキャッチして終了
    d. 時刻到達 → MoveService.ExecuteAsync を呼び出す
    e. 成功時 → job.ToVc のテキストチャンネルに成功メッセージを投稿
@@ -210,7 +214,39 @@ public class ScheduledJob
 | `ExecuteAt` | `DateTimeOffset` | 実行日時（JST、UTC+9で保持） |
 | `RequestedBy` | `ulong` | 予約したユーザーのID |
 | `NotifyChannelId` | `ulong` | エラー通知先テキストチャンネルのID（コマンドを実行したテキストチャンネル） |
-| `Cts` | `CancellationTokenSource` | キャンセル制御用（`new()` で初期化） |
+| `CancellationToken` | `CancellationTokenSource` | キャンセル制御用（`new()` で初期化） |
+
+### 2.6. NtpTimeSynchronizationCheckService
+
+```csharp
+public class NtpTimeSynchronizationCheckService : IHostedService
+```
+
+**責務**
+- アプリ起動時にローカル時刻と NTP サーバー時刻を比較し、乖離が大きい場合はアプリを停止する
+
+**設定値（`TimeSynchronizationCheck` セクション）**
+
+| キー | 型 | デフォルト | 説明 |
+|------|-----|-----------|------|
+| `Enabled` | `bool` | `true` | チェックを実行するかどうか |
+| `NtpServer` | `string` | `"ntp.nict.jp"` | 参照する NTP サーバーアドレス |
+| `AllowableMilliseconds` | `uint` | `1000` | 許容する時刻差（ms）。絶対値で比較 |
+
+**主要メンバー**
+
+| メンバー | 種別 | 説明 |
+|----------|------|------|
+| `StartAsync(CancellationToken)` | method | NTP 問い合わせ・時刻差チェック |
+| `StopAsync(CancellationToken)` | method | 何もしない |
+
+**動作**
+1. `Enabled = false` の場合は警告ログを出力して終了
+2. `NtpServer` が未設定の場合は `InvalidOperationException` をスローしてアプリを停止
+3. `GuerrillaNtp` で NTP サーバーから時刻取得。失敗時は `InvalidOperationException` をスローして停止
+4. ローカル時刻との差が `AllowableMilliseconds` を超える場合は `InvalidOperationException` をスローして停止
+
+---
 
 ## 3. シーケンス図
 
@@ -269,7 +305,7 @@ Discord → CommandModule: InteractionCreated
 CommandModule → CommandModule: 権限チェック
 CommandModule → SchedulerService: CancelJobAsync(id)
 alt 該当ジョブあり
-  SchedulerService → SchedulerService: job.Cts.Cancel()
+  SchedulerService → SchedulerService: job.CancellationToken.Cancel()
   SchedulerService → SchedulerService: リストから削除
   SchedulerService → CommandModule: true
   CommandModule → User: "予約 xxxxxxxx をキャンセルしました"
@@ -285,7 +321,8 @@ end
 
 ```json
 {
-  "TimeSynchronization": {
+  "TimeSynchronizationCheck": {
+    "Enabled": true,
     "NtpServer": "ntp.nict.jp",
     "AllowableMilliseconds": 1000
   }
