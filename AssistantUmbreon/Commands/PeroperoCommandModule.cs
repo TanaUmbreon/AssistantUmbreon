@@ -133,11 +133,11 @@ public class PeroperoCommandModule : InteractionModuleBase<SocketInteractionCont
 
         var sb = new StringBuilder(_config["peropero:list:has_jobs"]!);
         sb.AppendLine();
-        foreach (var job in jobs)
+        foreach (var job in jobs.OrderBy(j => j.ExecuteAt))
         {
             var shortId = job.Id.ToString("N")[..8];
             var executeAtJst = TimeZoneInfo.ConvertTime(job.ExecuteAt, Jst);
-            sb.AppendLine($"・`{shortId}` | {job.FromVc.Name} → {job.ToVc.Name} | {executeAtJst:yyyy-MM-dd HH:mm}");
+            sb.AppendLine($"・`{executeAtJst:yyyy-MM-dd HH:mm} | {job.FromVc.Name} → {job.ToVc.Name} | {shortId}` ");
         }
 
         await RespondAsync(sb.ToString());
@@ -173,16 +173,6 @@ public class PeroperoCommandModule : InteractionModuleBase<SocketInteractionCont
         if (executeAt <= DateTimeOffset.UtcNow)
         {
             await RespondAsync(_config["peropero:move:past_datetime"]!);
-            return;
-        }
-
-        var members = (await fromVc.GetUsersAsync().FlattenAsync())
-            .Where(u => u.VoiceChannel?.Id == fromVc.Id)
-            .ToList();
-
-        if (members.Count == 0)
-        {
-            await RespondAsync(_config["peropero:move:no_members"]!);
             return;
         }
 
